@@ -8,6 +8,7 @@ using Color = System.Drawing.Color;
 
 namespace KurisuBlitz
 {  
+    
     /* Blitz - The God Hand
      * Revision:101 - 10/10/2014
      * + added target selector
@@ -22,8 +23,15 @@ namespace KurisuBlitz
         private static Obj_AI_Hero _target;
         private static Orbwalking.Orbwalker _orbwalker;
         private static readonly Obj_AI_Hero _player = ObjectManager.Player;
-
-        private static readonly Spell Q = new Spell(SpellSlot.Q, 925f);
+        foreach(var spell in ObjectManager.Player.Spellbook.Spells)
+        {
+            if(spell.SData.Name == "RocketGrab"){
+                public static float QWidth = spell.SData.LineWidth;
+                public static float QSpeed = spell.SData.MissileSpeed;   //Care 1
+                public static float QRange = spell.SData.CastRange[0];
+            }
+        }
+        private static readonly Spell Q = new Spell(SpellSlot.Q, QRange); //Care 2
         private static readonly Spell R = new Spell(SpellSlot.R, 550f);
 
         private static readonly List<Spell> blitzDrawingList = new List<Spell>();
@@ -40,7 +48,7 @@ namespace KurisuBlitz
         private void BlitzOnLoad(EventArgs args)
         {
             // Set Q Prediction
-            Q.SetSkillshot(0.25f, 70f, 1800f, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, QWidth, QSpeed, true, SkillshotType.SkillshotLine); //care 3
 
             // Drawing List
             blitzDrawingList.Add(Q);
@@ -58,8 +66,6 @@ namespace KurisuBlitz
             // Interrupter
             Interrupter.OnPossibleToInterrupt += BlitzOnInterrupt;
 
-            // OnGapCloser
-            AntiGapcloser.OnEnemyGapcloser += BlitzOnGapcloser;
         }
 
         // not tested
@@ -176,6 +182,23 @@ namespace KurisuBlitz
                         
         private void GodKS()
         {
+            if (_menu.Item("killstealQ").GetValue<bool>() && Q.IsReady())
+            {
+                foreach (
+                    var enemy in
+                        ObjectManager.Get<Obj_AI_Hero>()
+                            .Where(e => e.Team != _player.Team && e.Distance(_player.Position) < Q.Range))
+                {
+                    var qDmg = _player.GetSpellDamage(enemy, SpellSlot.Q);
+                    if (qDmg > enemy.Health)
+                    {
+                            PredictionOutput prediction = Q.GetPrediction(target);
+                            Q.Cast(prediction.CastPosition);
+                    }
+
+                }
+            }
+            //technically a simple copy-paste sry
             if (_menu.Item("killsteal").GetValue<bool>() && R.IsReady())
             {
                 foreach (
@@ -235,6 +258,7 @@ namespace KurisuBlitz
             _menu.AddItem(new MenuItem("interrupt", "Auto-Interrupt")).SetValue(true);
             _menu.AddItem(new MenuItem("useE", "Auto-E after grab")).SetValue(true);
             _menu.AddItem(new MenuItem("killsteal", "Killsteal with Ult")).SetValue(false);
+            _menu.AddItem(new MenuItem("killstealQ", "Killsteal with Q")).SetValue(false); //why not :D
             _menu.AddItem(new MenuItem("combokey", "Combo Key")).SetValue(new KeyBind(32, KeyBindType.Press));
             _menu.AddToMainMenu();
 
